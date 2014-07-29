@@ -16,7 +16,7 @@ def format_date(dt):
 
 DEFAULT_OPTIONS = {
     "public_user": "true",
-    "realm": "jobs",
+    "realm": "Jobs",
     "group_by": "resource",
     "statistic": "",
     "start_date": format_date(datetime.utcnow() - timedelta(weeks=1)),
@@ -45,7 +45,9 @@ DEFAULT_OPTIONS = {
     "format": "png",
     "inline": "n",
     "operation": "get_data",
+    "controller_module": "user_interface"
 }
+
 
 class Graph(object):
     """
@@ -58,7 +60,7 @@ class Graph(object):
     def __init__(self, name, root_url, **options):
         self.name = name
         self.root_url = root_url
-        self.main_url = "{0}".format("/user_interface.php")
+        self.main_url = "{0}/controllers/user_interface.php".format(self.root_url)
         self.options = DEFAULT_OPTIONS
         self.options.update(options)
 
@@ -76,19 +78,20 @@ class Graph(object):
         :return A StringIO buffer with the image
         :rtype StringIO
         """
-        resp = requests.post(self.root_url, self.options)
+        resp = requests.post(self.main_url, data=self.options)
         resp.raise_for_status()
         return StringIO(resp.content)
 
-    def download_to_file(self, fname):
+    def download_to_file(self, fname=None):
         """
         Download the graph directly to a file
         :param fname: The name of the file to save the graph as
         :type fname: str
         """
-        resp = requests.post(self.root_url, self.options, stream=True)
+        resp = requests.post(self.main_url, data=self.options, stream=True)
         resp.raise_for_status()
-        with open(fname, 'wb') as fd:
+        true_fname = fname or "{0}.{1}".format(self.name, self.options['format'])
+        with open(true_fname, 'wb') as fd:
             for chunk in resp.iter_content(1024):
                 fd.write(chunk)
 

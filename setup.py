@@ -12,4 +12,5 @@ setup(
     author_email='rossdylan@csh.rit.edu',
     packages=find_packages(),
     install_requires=requires,
+    zip_safe=False,
 )
