@@ -1,7 +1,7 @@
-from datetime import datetime, timedelta
-from StringIO import StringIO
 import requests
 import json
+from datetime import datetime, timedelta
+from StringIO import StringIO
 
 
 def format_date(dt):
@@ -13,6 +13,15 @@ def format_date(dt):
     :rtype str
     """
     return dt.strftime("%Y-%m-%d")
+
+def _make_post(*args, **kwargs):
+    """
+    Make a post request using requests,
+    and raise an exception if we get a bad status code
+    """
+    resp = requests.post(*args, **kwargs)
+    resp.raise_for_status()
+    return resp
 
 DEFAULT_OPTIONS = {
     "public_user": "true",
@@ -60,7 +69,8 @@ class Graph(object):
     def __init__(self, name, root_url, **options):
         self.name = name
         self.root_url = root_url
-        self.main_url = "{0}/controllers/user_interface.php".format(self.root_url)
+        self.main_url = "{0}/controllers/user_interface.php".format(
+            self.root_url)
         self.options = DEFAULT_OPTIONS
         self.options.update(options)
 
@@ -72,14 +82,27 @@ class Graph(object):
         """
         self.options.update(params)
 
+    def download_csv(self):
+        """
+        CSV Exporting is way different than the other image formats so
+        this function bypasses the storage within a StringIO instance and
+        returns the raw CSV data. This way you don't need to redefine a graph
+        with the csv format just to export as csv.
+        :return a string containing the csv defining this graph
+        :rtype str
+        """
+        temp_options = self.options
+        temp_options['format'] = 'csv'
+        resp = _make_post(self.main_url, data=temp_options)
+        return resp.text
+
     def download(self):
         """
         Return a StringIO instance with the downloaded graph image
         :return A StringIO buffer with the image
         :rtype StringIO
         """
-        resp = requests.post(self.main_url, data=self.options)
-        resp.raise_for_status()
+        resp = _make_post(self.main_url, data=self.options)
         return StringIO(resp.content)
 
     def download_to_file(self, fname=None):
@@ -88,8 +111,7 @@ class Graph(object):
         :param fname: The name of the file to save the graph as
         :type fname: str
         """
-        resp = requests.post(self.main_url, data=self.options, stream=True)
-        resp.raise_for_status()
+        resp = _make_post(self.main_url, data=self.options, stream=True)
         true_fname = fname or "{0}.{1}".format(self.name, self.options['format'])
         with open(true_fname, 'wb') as fd:
             for chunk in resp.iter_content(1024):
